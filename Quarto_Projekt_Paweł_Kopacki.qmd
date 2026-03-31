@@ -1,0 +1,336 @@
+---
+title: "Quarto Projekt"
+subtitle: "Grupa Środowa"
+date: today
+author: "Paweł Kopacki"
+format: 
+  html: 
+    toc: true
+    toc-depth: 5
+    toc-location: left
+    toc-title: "Spis treści"
+    number-sections: true
+    number-depth: 5
+    code-fold: show
+    code-summary: "Show the code"
+    code-tools: true
+    code-block-bg: true
+    code-block-border-left: "blue"
+    code-line-numbers: true
+    code-copy: true
+    html-math-method: katex
+    embed-resources: true
+    smooth-scroll: true
+    anchor-sections: true
+    link-external-icon: true
+    theme:
+        light: Zephyr
+        dark: Materia
+    fontsize: 1.0em
+    linestretch: 1.5
+execute: 
+  echo: true
+  error: false
+  warning: false
+  output: true
+editor_options: 
+  chunk_output_type: console
+---
+# Zainteresowania
+Mam szerokie zainteresowania, jednak od zawsze sport był u mnie na 1 miejscu!
+Uprawiam wiele sportów, jednak z Tenisem Stołowym nie rozstaję się już od 13 lat. Gram profesjonanie w 2 lidze mężczyzn, poza tym jestem trenerem oraz jeżdżę na obozy dla dorosłych jako trener i sparingpartner.
+W czasie kiedy nie gram w tenisa, najprawdopodobniej można mnie spotkać na boisku do siatkówki. Z racji że jestem wysoki, polubiłem ten sport i jest on dla mnie fajną odskocznią od mojego głównego sportu.  Oprócz tego w wolnym czasie bardzo lubię chodzić na siłownię. Poza sportem lubię grać na gitarze oraz spotykać się ze znajomymi.
+
+[Link do tabeli 2 ligi mężczyzn (mój klub to Bronowianka Kraków)](https://ligi.pozts.pl/liga/15/113/2-liga-mezczyzn/)
+
+
+![***Moje zwycięstwo w Igrzyskach Studentów 1 roku***](https://scontent-waw1-1.xx.fbcdn.net/v/t39.30808-6/407435137_852078710253706_8948940409758732980_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=3635dc&_nc_ohc=xzDXMp93s0wAX_hrKM7&_nc_ht=scontent-waw1-1.xx&oh=00_AfB_lbX4-tfw06j-q7HLc98dHOfYyg0d0I60cJbx2EeXmg&oe=65A0C8BE)
+```{r filename="Pakiety"}
+#| label: pakiet
+
+library(tidyverse)
+library(gt)
+library(DT)
+library(tools)
+library(rio)
+```
+
+
+
+# Pozyskiwanie danych
+[1. Dane pobrałem z tej strony](https://www.formula1.com/en/results.html/2023/drivers.html)  
+2. Następnie wkleiłem je do notatnika  
+3. Plik z notatnika zapisałem w odpowiednim formacie  
+4. Ustawiłem ścieżkę dostępu do tego pliku  
+5. Ostatecznie pobrałem dane za pomocą pakietu rio.  
+```{r}
+#| echo: true
+#| results: hide
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+dane <- rio::import(file ="f1_dane.txt")
+dane <- 
+  dane |> 
+mutate("HAPPY"=sample(c(T,F),22,replace = T)) |> 
+mutate("MEAN" = round(dane$PTS/22,2))
+dane <- data.frame(dane)
+
+```
+# Informacje o danych
+Opis danych
+```{r}
+#| echo: false 
+Dane =  "Data frame 22 wiersze oraz 7 zmiennych"  
+POS =    "Pozycja w Sezonie"
+DRIVER = "Imie i nazwisko kierowcy"
+NATIONALITY = "Narodowość danego kierowcy"
+CAR = "Zespół w którym jeździł"
+PTS = "Informacja ile pkt zdobył dany kierowca w sezonie"
+HAPPY = "Zadowolenie z sezonu True = Tak, False = Nie"
+MEAN = "ile pkt zdobyl dany kierowca na 1 weekend wyścigowy"
+Opis <- data.frame(Dane,POS,DRIVER,NATIONALITY,CAR,PTS,HAPPY,MEAN) |> 
+pivot_longer(
+               cols = everything(),
+               names_to = "zmienna",
+               values_to = "wyjaśnienie")
+
+gt(Opis)
+```
+```{r}
+#| echo: false
+datatable(dane)
+
+```
+# Przetwarzanie Potokowe
+Sortowanie oraz statystyki po danej Ekipie
+
+```{r}
+#| echo: true
+dane2 <- 
+  mutate(dane,
+         wynik = cut(
+           dane$PTS,
+           breaks = c(0, 20, 100, 250, max(dane$PTS)),
+           labels = c("słaby", "umiarkowany", "dobry", "bardzo dobry")
+         ))
+konstruktorka <-
+  dane2 |>
+  group_by(CAR) |>
+  summarise(sum(PTS)) |>
+  arrange(desc(`sum(PTS)`)) |>
+  mutate("MEAN" =
+           across(.cols = `sum(PTS)`,
+                  .fns = ~ round(.x / 22, 2)))  
+  
+datatable(dane2)
+tibble(konstruktorka)
+
+  
+    
+    
+
+
+```
+# Funkcja 
+
+```{r}
+#|echo: true
+
+
+odchylenie <- function(x){
+srednia <- mean(sum(dane$PTS)/22)
+k = 0
+for (i in dane$PTS){
+  kwadrat_odleglosci_od_sredniej <- (i - srednia)^2
+   k = k + kwadrat_odleglosci_od_sredniej
+}
+liczba_wyscigow <- 22
+wynik_petli <- k
+odchylenie1 <- sqrt((wynik_petli)/liczba_wyscigow)
+return(odchylenie1)
+}                                       
+
+```
+wzór, który użyłem do policzenia odchylenia standardowego to:
+$$
+odchylenie =  \sqrt{\frac{\sum_{i=1}^{n} {|x_i - \mu|^2}}{N}}
+$$
+,gdzie:  
+xi = wartośc punktu "i" w zbiorze danych,  
+φ = wartosc średnia całego zbioru danych,  
+N = liczba obserwacji
+
+```{r}
+#| echo: false
+wynik_koncowy <- odchylenie()
+dane_do_wykresu <- tibble(wynik_koncowy,konstruktorka$`sum(PTS)`,konstruktorka$CAR)
+dane_do_wykresu |> 
+ggplot()+
+  geom_point(aes(konstruktorka$`sum(PTS)`,konstruktorka$CAR),
+             size = 7,
+             shape = 36,
+             color = "black")+
+  geom_vline(xintercept = wynik_koncowy, color = "blue")+
+  labs(
+    x = "PTS BY TEAM", y = "TEAMS")+
+  theme(plot.background = element_rect(
+    fill = "green",
+    color = "black",
+    linewidth = 5))+
+  scale_x_continuous(breaks = c(0,150,300,450,600,750,875))
+
+
+```
+
+
+Wykres przedstawia wartość odchylenia standardowego w porównaniu ze zdobytymi PKT przez każdy zespół (niebieska linia przedstawia wartość policzonego odchylenia standardowego i wynosi ono ~136.99)
+
+# Pętla
+
+```{r}
+#| echo: true
+plik1 <- round(rnorm(50, 80, 80),0)
+plik2 <- round(runif(50, 160, 190),0)
+plik3 <- round(sample(c(40:110,NA,NA,NA,NA,NA),50,),0)
+
+write.csv(plik1, "plik1.csv",row.names = F)
+write.csv(plik2, "plik2.csv",row.names = F)
+write.csv(plik3, "plik3.csv",row.names = F)
+```
+
+```{r}
+#| echo: true
+pliki_w_katalogu <- list.files(path = (dirname(rstudioapi::getActiveDocumentContext()$path)), full.names = TRUE)
+wynik <- tibble()
+licznik_plikow <- 0
+for (plik in pliki_w_katalogu) {
+  if (licznik_plikow > 3) {
+    stop("Nie możesz dodac wiecej niż 3 plikow")
+  }
+  else
+  {
+    if (file_ext(plik) == "csv") {
+      dane3 <- read.csv(plik)
+      wynik <- rbind(dane3, wynik)
+      licznik_plikow = licznik_plikow + 1
+    }
+  }
+}
+tibble(wynik)
+
+
+```
+# ggplot2
+## Wykres 1
+```{r}
+
+data <- data.frame(
+  DRIVER <- dane2$DRIVER,
+  TEAM <- dane2$CAR,
+  PTS <- dane2$PTS)
+wykres1 <- ggplot(data, aes(x = DRIVER,y = PTS, fill = DRIVER)) +
+  geom_bar(stat = "identity",show.legend = F,just = 0.5)+
+  labs(title = "Porównanie zdobytych punktów przez kierowców z danego zespołu") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  facet_wrap(~data$TEAM, scales = "free") +
+  scale_y_continuous(expand = expansion(mult = c(0.1, 0.5)))  
+wykres1
+```
+## Wykres 2
+```{r}
+#| echo: false
+setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
+red_bull1 <- import(file = "red bull.txt")
+red_bull <- 
+red_bull1 |> select(V3) |> 
+cumsum()
+ferrari1 <- import(file = "Ferrari.txt")
+ferrari <- 
+  ferrari1 |> 
+  select(V3) |> 
+  cumsum()
+HAAS <- import(file = "HAAS.txt")
+HAAS <- 
+  HAAS |> select(V3) |> 
+  cumsum()
+MCLAREN <- import("MCLAREN.txt")
+MCLAREN <- 
+  MCLAREN |> 
+  select(V3) |> 
+  cumsum()
+ASTON <- import("ASTON MARTIN.txt")
+ASTON <- 
+  ASTON |> 
+  select(V3) |> 
+  cumsum()
+ALPINE <- import("ALPINE.txt")
+ALPINE <- 
+  ALPINE |> 
+  select(V3) |> 
+  cumsum()
+ALPHA <- import("ALPHA TAURI.txt")
+ALPHA <- 
+  ALPHA |> 
+  select(V3) |> 
+  cumsum()
+ALFA <- import("ALFA ROMEO.txt")
+ALFA <- 
+  ALFA |> 
+  select(V3) |> 
+  cumsum()
+MERCEDES <- import("MERCEDES.txt")
+MERCEDES <- 
+  MERCEDES |> 
+  select(V3) |> 
+  cumsum()
+WILLIAMS <- import("WILLIAMS.txt")
+WILLIAMS <- 
+  WILLIAMS |> 
+  select(V3) |> 
+  cumsum()
+dane_koncowe <- data.frame(
+  RACE <- c(1:22),
+  FERRARI <- ferrari,
+  RED_BULL <- red_bull,
+  HAAS <- HAAS,
+  MCLAREN <- MCLAREN,
+  ASTON <- ASTON,
+  ALPINE <- ALPINE,
+  ALPHA <- ALPHA,
+  ALFA <- ALFA,
+  MERCEDES <- MERCEDES,
+  WILLIAMS <- WILLIAMS
+)
+colnames(dane_koncowe) <- c("RACE","FERRARI","RED BULL","HAAS","MCLAREN","ASTON MARTIN","ALPINE","ALPHA TAURI","ALFA ROMEO","MERCEDES","WILLIAMS")
+dane_koncowe2 <- 
+dane_koncowe |> 
+pivot_longer(
+  cols = (FERRARI:WILLIAMS),
+  names_to = "TEAMS"
+)
+wyscig0 <- 
+data.frame(
+  RACE = 0,
+  TEAMS = c("FERRARI", "RED BULL", "HAAS", "MCLAREN", "ASTON MARTIN", "ALPINE", "ALPHA TAURI", "ALFA ROMEO", "MERCEDES", "WILLIAMS"),
+  value = 0
+  
+)
+dane_koncowe2 <- bind_rows(wyscig0,dane_koncowe2)
+
+```
+``` {r}
+wykres2 <- 
+dane_koncowe2 |> 
+ggplot(aes(RACE,value,colour = TEAMS))+
+  geom_line(size = 1.5)+
+  scale_color_manual(values = c("FERRARI" = "red", "RED BULL" = "blue3", "HAAS" = "black", "MCLAREN" = "orange", "ASTON MARTIN" = "green4","ALPINE" = "blue","ALPHA TAURI" = "navy","ALFA ROMEO" = "red4","MERCEDES" = "skyblue1","WILLIAMS" = "mediumslateblue"))+
+  scale_x_continuous(breaks = c(0:22))+
+  scale_y_continuous(breaks = c(50,100,175,250,350,500,700,900))+
+  expand_limits(x = 0)+
+  theme(legend.key.size = unit(1.2, "cm"))+
+  labs(title = "Zestawienie zdobtych PKT przez dany zespol z wyscigami",
+       y = "PTS")
+wykres2
+
+
+```
+
