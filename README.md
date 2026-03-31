@@ -80,3 +80,4 @@ cd RStudio_WEB_APP
 3. Click **Render** – the report will open in your browser as `Wynik_Końcowy.html`
 
 ---
+![](./screenshot.jpg)
